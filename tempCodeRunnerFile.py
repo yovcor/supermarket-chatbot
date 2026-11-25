@@ -1,0 +1,1 @@
+i want buy 2 packets of bread, fresh milk, choclate, tomatoes and sausages

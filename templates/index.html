@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supermarket Shelf-Locator Chatbot</title>
+<style>
+  :root {
+    --green: #1f7a4d;
+    --green-dark: #145c39;
+    --bg: #f4f6f4;
+    --card: #ffffff;
+    --text: #1c2b22;
+    --muted: #6b7a70;
+    --border: #e1e6e2;
+    --accent: #ffb703;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .app {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--card);
+    box-shadow: 0 0 30px rgba(0,0,0,0.06);
+  }
+  header {
+    background: linear-gradient(135deg, var(--green), var(--green-dark));
+    color: white;
+    padding: 22px 24px;
+  }
+  header h1 {
+    margin: 0 0 4px 0;
+    font-size: 1.35rem;
+  }
+  header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.88rem;
+  }
+  #menuBtn {
+    position: absolute;
+    top: 22px;
+    right: 24px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  header { position: relative; }
+
+  #chat {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+  .msg.bot {
+    background: #eef4ef;
+    align-self: flex-start;
+    border-bottom-left-radius: 3px;
+  }
+  .msg.user {
+    background: var(--green);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 3px;
+  }
+  table.results {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 0.85rem;
+  }
+  table.results th, table.results td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.results th {
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+  }
+  .shelf-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #4a3200;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+  }
+  .not-found {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: #a4442b;
+  }
+  .print-btn {
+    margin-top: 10px;
+    background: var(--green-dark);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .print-btn:hover { background: var(--green); }
+
+  form#inputForm {
+    display: flex;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--card);
+  }
+  #textInput {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 0.92rem;
+    outline: none;
+  }
+  #textInput:focus { border-color: var(--green); }
+  #sendBtn {
+    background: var(--green);
+    color: white;
+    border: none;
+    padding: 0 20px;
+    border-radius: 10px;
+    font-size: 0.92rem;
+    cursor: pointer;
+  }
+  #sendBtn:hover { background: var(--green-dark); }
+
+  #menuOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  #menuOverlay .panel {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    width: 90%;
+    max-width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  #menuOverlay h2 { margin-top: 0; font-size: 1.05rem; }
+  #menuOverlay table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  #menuOverlay th, #menuOverlay td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+  #closeMenu {
+    margin-top: 12px;
+    background: var(--green);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <button id="menuBtn">View full menu</button>
+    <h1>🛒 Shelf-Locator Chatbot</h1>
+    <p>Tell me what you're shopping for — I'll point you to the right shelf.</p>
+  </header>
+
+  <div id="chat"></div>
+
+  <form id="inputForm">
+    <input type="text" id="textInput" placeholder='e.g. "milk, bread, eggs and toothpaste"' autocomplete="off" />
+    <button type="submit" id="sendBtn">Send</button>
+  </form>
+</div>
+
+<div id="menuOverlay">
+  <div class="panel">
+    <h2>All items in our store</h2>
+    <table id="menuTable">
+      <thead><tr><th>Item</th><th>Category</th><th>Shelf</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <button id="closeMenu">Close</button>
+  </div>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const form = document.getElementById('inputForm');
+const input = document.getElementById('textInput');
+
+function addBotMessage(html) {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.innerHTML = html;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addUserMessage(text) {
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+addBotMessage("Hi! I'm your supermarket shopping assistant. List the items you need (e.g. <em>\"I need milk, bread, tomatoes and toothpaste\"</em>) and I'll tell you which shelf each one is on.");
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  addUserMessage(text);
+  input.value = '';
+
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message: text})
+  });
+  const data = await res.json();
+
+  if (data.error) {
+    addBotMessage("Sorry, something went wrong: " + data.error);
+    return;
+  }
+
+  let html = '';
+  if (data.found.length > 0) {
+    html += `<strong>Found ${data.found.length} item(s):</strong>`;
+    html += '<table class="results"><thead><tr><th>Item</th><th>Category</th><th>Shelf</th></tr></thead><tbody>';
+    for (const it of data.found) {
+      html += `<tr><td>${it.item.replace(/\b\w/g, c => c.toUpperCase())}</td><td>${it.category}</td><td><span class="shelf-badge">${it.shelf}</span></td></tr>`;
+    }
+    html += '</tbody></table>';
+  } else {
+    html += "I couldn't identify any known items in that request.";
+  }
+
+  if (data.not_found && data.not_found.length > 0) {
+    html += `<div class="not-found">Not found in our store: ${data.not_found.join(', ')}</div>`;
+  }
+
+  if (data.receipt_id) {
+    html += `<br><button class="print-btn" onclick="window.open('/api/receipt/${data.receipt_id}.pdf', '_blank')">🖨️ Print / Download Receipt (PDF)</button>`;
+  }
+
+  addBotMessage(html);
+});
+
+document.getElementById('menuBtn').addEventListener('click', async () => {
+  const res = await fetch('/api/menu');
+  const items = await res.json();
+  const tbody = document.querySelector('#menuTable tbody');
+  tbody.innerHTML = '';
+  for (const it of items) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${it.item}</td><td>${it.category}</td><td>${it.shelf}</td>`;
+    tbody.appendChild(tr);
+  }
+  document.getElementById('menuOverlay').style.display = 'flex';
+});
+document.getElementById('closeMenu').addEventListener('click', () => {
+  document.getElementById('menuOverlay').style.display = 'none';
+});
+</script>
+</body>
+</html>
